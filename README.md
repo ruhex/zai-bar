@@ -9,11 +9,7 @@ A macOS menu-bar widget that shows your **z.ai / GLM Coding Plan** quota at a
 glance — the 5-hour token-window percentage lives in your menu bar so you
 always know how much you have left before the window resets.
 
-<!--
-  Screenshot placeholder. Drop a PNG into docs/ and uncomment:
-
-  ![zai-bar in the menu bar and its popover](docs/screenshot.png)
--->
+![zai-bar in the menu bar and its popover](docs/screenshot.png)
 
 ## What it is
 
@@ -62,6 +58,8 @@ Prefer a double-clickable **ZAIBar.app** instead of `swift run`?
 open .build/ZAIBar.app
 ```
 
+Then [make it permanent & autostart at login](#make-it-permanent--autostart-at-login).
+
 #### Building for a specific architecture
 
 `swift build` targets your Mac's **native** architecture by default. Pick the
@@ -104,9 +102,38 @@ brew install --cask ruhex/tap/zai-bar
 
 Until then, use Option 1 or Option 2.
 
-### Autostart at login
+### Make it permanent & autostart at login
 
-Add `ZAIBar.app` under **System Settings → General → Login Items**.
+After building (or downloading), the app lives at `.build/ZAIBar.app` (or the
+unzipped location). To make it a permanent, Spotlight/Launchpad-findable app,
+move it into `/Applications` and launch it:
+
+```bash
+mv .build/ZAIBar.app /Applications/ZAIBar.app
+open /Applications/ZAIBar.app          # ⚡ appears in your menu bar
+```
+
+> Use `~/Applications` instead of `/Applications` for a per-user install (no
+> admin rights needed).
+
+Because the app is `LSUIElement`, it lives **only in the menu bar** (no Dock
+icon) — that's how you tell it's running. Quit it from the popover's **Quit**
+button.
+
+**Start automatically at login** — pick one:
+
+- **System Settings (recommended):** open **System Settings → General →
+  Login Items & Extensions**, click **+** under "Open at Login", and choose
+  `/Applications/ZAIBar.app`.
+- **Terminal one-liner:**
+  ```bash
+  osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/ZAIBar.app", hidden:true}'
+  ```
+  (The first time you may be prompted to grant your terminal **Accessibility**
+  permission under System Settings → Privacy & Security.)
+
+To remove autostart later: delete it from the same Login Items list, or
+`osascript -e 'tell application "System Events" to delete login item "ZAIBar"'`.
 
 ## First run
 
