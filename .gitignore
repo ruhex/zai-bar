@@ -1,0 +1,44 @@
+# ---- Swift Package Manager ----
+.build/
+.swiftpm/
+Package.resolved
+Packages/
+.build/*/ZAIBar.app
+.build/*/zai-bar
+
+# ---- Xcode ----
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# ---- Editors / IDEs ----
+.vscode/
+.idea/
+.history/
+*.swp
+*.swo
+*~
+
+# ---- Secrets & local config ----
+.env
+.env.*
+!.env.example
+*.secret
+*.pem
+*.key
+secrets/
+Config.local.swift
+
+# ---- Logs / temp ----
+*.log
+tmp/

@@ -1,0 +1,75 @@
+# Builds a universal (arm64 + x86_64) ZAIBar.app and publishes a GitHub Release.
+#
+# Trigger: manual, via the Actions UI ("Run workflow") with a version like 1.0.0.
+# To publish automatically on every git tag, uncomment the `push: tags` block
+# below and run the workflow from a tag instead.
+#
+# The job delegates to ./release.sh so the local and CI builds are identical.
+# Signing/notarization is adhoc unless the Apple secrets below are set; see
+# release.sh and the README's "Building & releasing" section.
+#
+# Optional secrets to enable signing + notarization in CI:
+#   APPLE_SIGNING_IDENTITY        e.g. "Developer ID Application: Your Name (TEAMID)"
+#   APPLE_ID                      Apple ID of the notarization account
+#   APPLE_APP_SPECIFIC_PASSWORD   app-specific password for that Apple ID
+#   APPLE_TEAM_ID                 10-char Team ID
+# (Importing the Developer ID private key into the runner is left as a follow-up
+# once you have one — see the commented step.)
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 1.0.0)'
+        required: true
+  # To auto-publish on tags, uncomment:
+  # push:
+  #   tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # - name: Import Developer ID certificate (enable for notarized builds)
+      #   if: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
+      #   env:
+      #     MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      #     MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      #   run: |
+      #     CERT_FILE=$(mktemp /tmp/certificate.XXXXXX.p12)
+      #     echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$CERT_FILE"
+      #     security create-keychain -p "$(uuidgen)" build.keychain
+      #     security set-keychain-settings -lut 21600 build.keychain
+      #     security unlock-keychain -p "$(uuidgen)" build.keychain
+      #     security import "$CERT_FILE" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k build.keychain
+      #     security list-keychains -d user -s build.keychain login.keychain-db
+
+      - name: Build, sign, zip, and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: ./release.sh --publish
