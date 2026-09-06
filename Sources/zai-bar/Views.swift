@@ -15,6 +15,10 @@ struct ContentView: View {
                 SettingsForm(onDone: { showSettings = false })
             } else {
                 bodyContent
+                if !model.modelSummaries.isEmpty {
+                    Divider()
+                    ModelsSection()
+                }
                 Divider()
                 PeakHoursView()
                 Divider()
@@ -139,6 +143,32 @@ struct LimitRow: View {
             Text(compactNumber(v)).frame(width: 46, alignment: .trailing)
         }
         .font(.caption2).foregroundStyle(.secondary)
+    }
+}
+
+// MARK: - Per-model usage
+
+struct ModelsSection: View {
+    @Environment(UsageModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text("Models · last 24h").font(.subheadline).fontWeight(.medium)
+                Spacer()
+                if let calls = model.modelUsage?.totalModelCallCount {
+                    Text("\(calls) calls").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            ForEach(model.modelSummaries) { m in
+                HStack {
+                    Text(m.modelName ?? "?").font(.caption)
+                    Spacer()
+                    Text("\(compactShort(m.totalTokens)) tokens")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 }
 

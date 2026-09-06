@@ -42,6 +42,37 @@ struct UsageDetail: Decodable, Identifiable {
     var id: String { modelCode ?? "—" }
 }
 
+// MARK: - Per-model usage (https://api.z.ai/api/monitor/usage/model-usage)
+
+struct ModelUsageResponse: Decodable {
+    let code: Int?
+    let msg: String?
+    let success: Bool?
+    let data: ModelUsageData?
+}
+
+struct ModelUsageData: Decodable {
+    /// Window totals: all calls, all tokens, and per-model token totals.
+    let totalUsage: TotalUsage?
+    // The response also carries x_time / modelCallCount / tokensUsage hourly
+    // aggregate arrays and modelDataList per-model hourly series — deliberately
+    // not decoded, nothing renders them yet.
+}
+
+struct TotalUsage: Decodable {
+    let totalModelCallCount: Int?
+    let totalTokensUsage: Double?
+    let modelSummaryList: [ModelSummary]?
+}
+
+struct ModelSummary: Decodable, Identifiable {
+    let modelName: String?
+    let totalTokens: Double?
+    let sortOrder: Int?
+
+    var id: String { "\(modelName ?? "—")-\(sortOrder ?? 0)" }
+}
+
 extension Limit {
     /// Friendly label derived from the (type, unit) window coding.
     var kindLabel: String {
@@ -109,4 +140,14 @@ func compactNumber(_ v: Double?) -> String {
     f.numberStyle = .decimal
     f.maximumFractionDigits = 0
     return f.string(from: NSNumber(value: v)) ?? "\(Int(v))"
+}
+
+/// "38.6M" / "10.1K" / "249" — for per-model token totals.
+func compactShort(_ v: Double?) -> String {
+    guard let v else { return "—" }
+    switch v {
+    case 1_000_000...: return String(format: "%.1fM", v / 1_000_000)
+    case 1_000...:     return String(format: "%.1fK", v / 1_000)
+    default:           return String(Int(v))
+    }
 }

@@ -16,6 +16,16 @@ enum ZAIError: LocalizedError {
     }
 }
 
+/// Common shape of z.ai monitor responses — the real status lives in the body.
+protocol ZAIResponseBody: Decodable {
+    var code: Int? { get }
+    var msg: String? { get }
+    var success: Bool? { get }
+}
+
+extension QuotaResponse: ZAIResponseBody {}
+extension ModelUsageResponse: ZAIResponseBody {}
+
 /// Talks to the (undocumented but stable) z.ai monitor endpoints.
 /// The coding-plan API key works directly as a Bearer token — no JWT needed.
 actor ZAIClient {
@@ -23,6 +33,13 @@ actor ZAIClient {
 
     private let host = "https://api.z.ai"
     private let session: URLSession
+    /// `yyyy-MM-dd HH:mm:ss` range format required by the model-usage endpoint.
+    private static let queryDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
 
     init() {
         let cfg = URLSessionConfiguration.default
@@ -34,18 +51,44 @@ actor ZAIClient {
     }
 
     func quotaLimit(apiKey: String) async throws -> QuotaResponse {
-        var req = URLRequest(url: URL(string: "\(host)/api/monitor/usage/quota/limit")!)
-        req.httpMethod = "GET"
-        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Accept")
-        req.setValue("en-US,en", forHTTPHeaderField: "Accept-Language")
-
-        let (data, resp) = try await session.data(for: req)
+        let (data, resp) = try await authorizedData(url: URL(string: "\(host)/api/monitor/usage/quota/limit")!, apiKey: apiKey)
         try checkHTTP(resp, data: data)
-
         let decoded = try JSONDecoder().decode(QuotaResponse.self, from: data)
         try interpret(decoded)
         return decoded
+    }
+
+    /// Per-model token usage for the last `windowHours` (24h by default).
+    /// The endpoint requires a `yyyy-MM-dd HH:mm:ss` local-time range.
+    func modelUsage(apiKey: String, windowHours: Int = 24) async throws -> ModelUsageResponse {
+        let f = Self.queryDateFormatter
+        let now = Date()
+        var comps = URLComponents(string: "\(host)/api/monitor/usage/model-usage")!
+        comps.queryItems = [
+            URLQueryItem(name: "startTime", value: f.string(from: now.addingTimeInterval(TimeInterval(-windowHours * 3600)))),
+            URLQueryItem(name: "endTime", value: f.string(from: now)),
+        ]
+        let (data, resp) = try await authorizedData(url: comps.url!, apiKey: apiKey)
+        try checkHTTP(resp, data: data)
+        let decoded = try JSONDecoder().decode(ModelUsageResponse.self, from: data)
+        try interpret(decoded)
+        return decoded
+    }
+
+    // MARK: Internals
+
+    private func authorizedData(url: URL, apiKey: String) async throws -> (Data, URLResponse) {
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        return try await session.data(for: authorized(req, apiKey: apiKey))
+    }
+
+    private func authorized(_ req: URLRequest, apiKey: String) -> URLRequest {
+        var req = req
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("en-US,en", forHTTPHeaderField: "Accept-Language")
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        return req
     }
 
     private func checkHTTP(_ resp: URLResponse, data: Data) throws {
@@ -60,7 +103,7 @@ actor ZAIClient {
     }
 
     /// The API answers 200 even for logical failures; the real status lives in the body.
-    private func interpret(_ r: QuotaResponse) throws {
+    private func interpret(_ r: ZAIResponseBody) throws {
         // A missing `success` flag with body code 200 is still a success —
         // the field is optional and could disappear from the undocumented API.
         // An explicit success:false always goes to the error path below.

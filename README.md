@@ -147,10 +147,11 @@ quota. To change or remove it later, click **Settings** → **Remove key**.
 
 ## How it works
 
-zai-bar calls a single endpoint:
+zai-bar calls two monitor endpoints:
 
 ```
 GET https://api.z.ai/api/monitor/usage/quota/limit
+GET https://api.z.ai/api/monitor/usage/model-usage?startTime=...&endTime=...  # last 24h, "yyyy-MM-dd HH:mm:ss"
 Authorization: Bearer <your coding-plan API key>
 Accept: application/json
 ```
