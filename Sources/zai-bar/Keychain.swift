@@ -22,7 +22,10 @@ final class Keychain {
         return value
     }
 
-    func save(_ value: String) {
+    /// Replaces the stored key. Returns false when the Keychain refused
+    /// (e.g. locked) so the caller can surface it instead of pretending success.
+    @discardableResult
+    func save(_ value: String) -> Bool {
         let base: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -31,7 +34,7 @@ final class Keychain {
         SecItemDelete(base as CFDictionary) // replace if present
         var add = base
         add[kSecValueData as String] = Data(value.utf8)
-        SecItemAdd(add as CFDictionary, nil)
+        return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
     }
 
     func delete() {

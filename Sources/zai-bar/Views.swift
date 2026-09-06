@@ -24,6 +24,7 @@ struct ContentView: View {
             }
         }
         .padding(14)
+        .task { await model.refresh() } // fresh data each time the popover opens
     }
 
     // MARK: Subviews

@@ -27,7 +27,9 @@ actor ZAIClient {
     init() {
         let cfg = URLSessionConfiguration.default
         cfg.timeoutIntervalForRequest = 15
-        cfg.waitsForConnectivity = true
+        // Hard cap: with waitsForConnectivity a request waits for the network
+        // indefinitely and the refresh loop wedges, freezing the tray on stale data.
+        cfg.timeoutIntervalForResource = 30
         session = URLSession(configuration: cfg)
     }
 
@@ -59,7 +61,10 @@ actor ZAIClient {
 
     /// The API answers 200 even for logical failures; the real status lives in the body.
     private func interpret(_ r: QuotaResponse) throws {
-        if r.success == true { return }
+        // A missing `success` flag with body code 200 is still a success —
+        // the field is optional and could disappear from the undocumented API.
+        // An explicit success:false always goes to the error path below.
+        if r.success == true || (r.success == nil && r.code == 200) { return }
         let code = r.code ?? -1
         let msg = r.msg ?? ""
 

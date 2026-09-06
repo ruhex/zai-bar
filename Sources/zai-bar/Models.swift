@@ -33,7 +33,7 @@ struct Limit: Decodable, Identifiable {
     let nextResetTime: Int64?
     let usageDetails: [UsageDetail]?
 
-    var id: String { "\(type)-\(unit ?? 0)-\(number ?? 0)" }
+    var id: String { "\(type)-\(unit ?? 0)-\(number ?? 0)-\(nextResetTime ?? 0)" }
 }
 
 struct UsageDetail: Decodable, Identifiable {
