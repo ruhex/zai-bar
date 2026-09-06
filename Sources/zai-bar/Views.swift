@@ -186,9 +186,6 @@ struct PeakHoursView: View {
     @ViewBuilder
     private func row(now: Date) -> some View {
         let peak = PeakHours.isPeak(at: now)
-        let mult = PeakHours.advancedMultiplier(at: now)
-        let promo = PeakHours.promoActive(at: now)
-        let offPeak = promo ? 1 : 2
         let (start, end) = PeakHours.window(at: now)
         let tf = Date.FormatStyle.dateTime.hour().minute()
 
@@ -201,11 +198,13 @@ struct PeakHoursView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Peak hours \(start.formatted(tf))–\(end.formatted(tf)) (local)")
                     .font(.caption).fontWeight(.medium)
-                Text(peak
-                     ? "Now peak — GLM-5.2 / 5-Turbo tokens \(mult)×"
-                     : "Now off-peak — GLM-5.2 / 5-Turbo tokens \(mult)×\(promo ? " (promo)" : "")")
+                Text(peak ? "Now peak" : "Now off-peak")
                     .font(.caption2).foregroundStyle(.secondary)
-                Text("3× in peak · \(offPeak)× off-peak · GLM-4.7 always 1× · 14:00–18:00 UTC+8")
+                ForEach(PeakHours.modelRates(at: now), id: \.model) { rate in
+                    Text("\(rate.model) — \(rate.peak) peak · \(rate.offPeak) off-peak")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                Text("peak = 14:00–18:00 UTC+8")
                     .font(.caption2).foregroundStyle(.tertiary)
             }
         }

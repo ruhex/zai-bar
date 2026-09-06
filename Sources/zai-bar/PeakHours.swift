@@ -12,6 +12,28 @@ enum PeakHours {
     static let startHour = 14
     static let endHour = 18 // exclusive
 
+    /// Per-model quota multipliers as z.ai publishes them. Neither the monitor
+    /// API nor the model catalog (/api/paas/v4/models) exposes rates, so this
+    /// table is the single place to edit when the lineup or rates change.
+    /// GLM-5.3 / 5.3-Flash rates follow the 2026-07-30 usage revision
+    /// (docs.z.ai/devpack/notice/usage-revision); the legacy-plan promo keeps
+    /// advanced models at 1× off-peak through 2026-10-01.
+    struct ModelRate {
+        let model: String
+        let peak: String
+        let offPeak: String
+    }
+
+    static func modelRates(at date: Date = .now) -> [ModelRate] {
+        let advancedOff = promoActive(at: date) ? "1× (promo)" : "2×"
+        return [
+            ModelRate(model: "GLM-5.2 / 5-Turbo", peak: "3×", offPeak: advancedOff),
+            ModelRate(model: "GLM-5.3",           peak: "3×", offPeak: "1×"),
+            ModelRate(model: "GLM-5.3-Flash",     peak: "1.2×", offPeak: "0.4×"),
+            ModelRate(model: "GLM-4.7",           peak: "1×", offPeak: "1×"),
+        ]
+    }
+
     static func isPeak(at date: Date = .now) -> Bool {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timezone
