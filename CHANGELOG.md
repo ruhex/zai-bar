@@ -19,6 +19,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - _(nothing yet)_
 
+## [1.1.0] - 2026-09-06
+
+### Added
+
+- **Per-model usage breakdown** via the second monitor endpoint
+  (`/api/monitor/usage/model-usage`, 24h window): a "Models · last 24h"
+  popover section lists tokens per model plus total calls. Model names come
+  from the API, so newly released models appear automatically.
+- **24-hour usage sparkline**: hourly stacked bars per model with hover
+  tooltips and a per-model color legend matching the list above.
+- **Peak-hours model rates table**: the popover lists per-model quota
+  multipliers (GLM-5.2 / 5-Turbo, GLM-5.3, GLM-5.3-Flash, GLM-4.7) from a
+  single editable table (`PeakHours.modelRates`) instead of a hardcoded
+  label; GLM-5.3 / GLM-5.3-Flash rates follow z.ai's 2026-07-30 usage
+  revision, and the off-peak promo multiplier is applied dynamically.
+
+### Fixed
+
+- **Stale quota display**: the refresh loop could hang forever on
+  `waitsForConnectivity` after a network drop (sleep/wake, VPN), freezing the
+  menu bar on old data with no error indication. Requests now fail fast
+  (15 s request / 30 s hard cap) and failures surface as an explicit error
+  icon in the menu bar.
+- **Missed refreshes**: the widget now refreshes on system wake and every
+  time the popover opens, and an App Nap guard keeps the 5-minute refresh
+  timer alive without preventing idle system sleep.
+- **Stale-data races**: closing the popover mid-fetch or switching/removing
+  the API key while a fetch is in flight can no longer apply outdated
+  responses — each new refresh cancels and replaces the in-flight one, and
+  Keychain write errors are surfaced instead of silently ignored.
+- **Robust parsing**: responses without the `success` field (with body
+  code 200) are accepted, explicit `success:false` is treated as an error,
+  and per-model `null` hourly values or duplicate model names no longer break
+  decoding or rendering.
+
 ## [1.0.0] - 2026-06-29
 
 ### Added
@@ -58,5 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundle id: `com.github.ruhex.zai-bar`.
 - Outbound request is the only network activity — no telemetry.
 
-[Unreleased]: https://github.com/ruhex/zai-bar/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ruhex/zai-bar/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/ruhex/zai-bar/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ruhex/zai-bar/releases/tag/v1.0.0

@@ -24,7 +24,7 @@ EXEC_NAME="ZAIBar"
 TARGET="zai-bar"
 NAME="ZAI Bar"
 BUNDLE_ID="com.github.ruhex.zai-bar"
-DEFAULT_VERSION="1.0.0"
+DEFAULT_VERSION="1.1.0"
 VERSION="${VERSION:-$DEFAULT_VERSION}"
 
 # 1. Stamp BuildInfo.swift from git (version, short commit, commit date, remote).

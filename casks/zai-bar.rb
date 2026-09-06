@@ -6,7 +6,7 @@
 #     shasum -a 256 zai-bar-<ver>-universal-macos.zip
 
 cask "zai-bar" do
-  version "1.0.0"
+  version "1.1.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
   url "https://github.com/ruhex/zai-bar/releases/download/v#{version}/zai-bar-#{version}-universal-macos.zip"
