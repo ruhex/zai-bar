@@ -151,24 +151,110 @@ struct LimitRow: View {
 struct ModelsSection: View {
     @Environment(UsageModel.self) private var model
 
+    private static let palette: [Color] = [.blue, .orange, .green, .purple, .pink, .teal]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text("Models · last 24h").font(.subheadline).fontWeight(.medium)
                 Spacer()
-                if let calls = model.modelUsage?.totalModelCallCount {
+                if let calls = model.modelUsage?.totalUsage?.totalModelCallCount {
                     Text("\(calls) calls").font(.caption2).foregroundStyle(.secondary)
                 }
             }
-            ForEach(model.modelSummaries) { m in
-                HStack {
+            ForEach(Array(model.modelSummaries.enumerated()), id: \.element.id) { si, m in
+                HStack(spacing: 5) {
+                    Circle().fill(Self.palette[si % Self.palette.count].opacity(0.9))
+                        .frame(width: 6, height: 6)
                     Text(m.modelName ?? "?").font(.caption)
                     Spacer()
                     Text("\(compactShort(m.totalTokens)) tokens")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            if let bars = buildBars(), bars.contains(where: { $0.total > 0 }) {
+                UsageSparkline(bars: bars)
+                    .frame(height: 36)
+                    .padding(.top, 1)
+            }
         }
+    }
+
+    /// Last 24 hourly buckets as stacked bars, one segment per model.
+    private func buildBars() -> [HourlyBar]? {
+        guard let data = model.modelUsage,
+              let rawTimes = data.xTime, !rawTimes.isEmpty else { return nil }
+        let offset = max(0, rawTimes.count - 24)
+        let times = Array(rawTimes[offset...])
+        // Duplicate model names must not crash — keep the first occurrence.
+        let seriesByName = Dictionary(
+            (data.modelDataList ?? []).compactMap { s in
+                s.modelName.map { ($0, s.tokensUsage ?? []) }
+            },
+            uniquingKeysWith: { a, _ in a })
+        let summaries = model.modelSummaries
+        return times.enumerated().map { i, t in
+            let idx = offset + i
+            let parts: [(name: String, value: Double, color: Color)] = summaries.enumerated().compactMap { si, m in
+                guard let name = m.modelName,
+                      let arr = seriesByName[name], idx < arr.count else { return nil }
+                return (name, arr[idx] ?? 0, Self.palette[si % Self.palette.count])
+            }
+            return HourlyBar(id: idx, label: t, parts: parts)
+        }
+    }
+}
+
+struct HourlyBar: Identifiable {
+    let id: Int
+    /// Full hour label from the API, e.g. "2026-09-06 14:00".
+    let label: String
+    let parts: [(name: String, value: Double, color: Color)]
+
+    var total: Double { parts.reduce(0) { $0 + $1.value } }
+}
+
+struct UsageSparkline: View {
+    let bars: [HourlyBar]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            GeometryReader { geo in
+                let maxTotal = max(bars.map(\.total).max() ?? 0, 1)
+                HStack(alignment: .bottom, spacing: 1) {
+                    ForEach(bars) { bar in
+                        VStack(spacing: 0) {
+                            ForEach(Array(bar.parts.enumerated()), id: \.offset) { _, part in
+                                Rectangle()
+                                    .fill(part.value > 0 ? part.color : Color.clear)
+                                    .frame(height: geo.size.height * part.value / maxTotal)
+                            }
+                        }
+                        .frame(maxHeight: geo.size.height, alignment: .bottom)
+                        .frame(maxWidth: .infinity)
+                        .help(tooltip(bar))
+                    }
+                }
+            }
+            HStack {
+                Text(axis(bars.first?.label)).font(.caption2).foregroundStyle(.tertiary)
+                Spacer()
+                Text(axis(bars.last?.label)).font(.caption2).foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private func tooltip(_ bar: HourlyBar) -> String {
+        var text = "\(bar.label) — \(compactShort(bar.total)) tokens"
+        let parts = bar.parts.filter { $0.value > 0 }
+            .map { "\($0.name): \(compactShort($0.value))" }
+            .joined(separator: " · ")
+        if !parts.isEmpty { text += "  (\(parts))" }
+        return text
+    }
+
+    private func axis(_ label: String?) -> String {
+        label.map { String($0.suffix(5)) } ?? ""
     }
 }
 

@@ -52,11 +52,17 @@ struct ModelUsageResponse: Decodable {
 }
 
 struct ModelUsageData: Decodable {
+    /// Hour labels for the hourly series, e.g. "2026-09-06 14:00".
+    let xTime: [String]?
     /// Window totals: all calls, all tokens, and per-model token totals.
     let totalUsage: TotalUsage?
-    // The response also carries x_time / modelCallCount / tokensUsage hourly
-    // aggregate arrays and modelDataList per-model hourly series — deliberately
-    // not decoded, nothing renders them yet.
+    /// Per-model hourly token series, aligned index-wise with `xTime`.
+    let modelDataList: [ModelUsageSeries]?
+
+    enum CodingKeys: String, CodingKey {
+        case xTime = "x_time"
+        case totalUsage, modelDataList
+    }
 }
 
 struct TotalUsage: Decodable {
@@ -71,6 +77,16 @@ struct ModelSummary: Decodable, Identifiable {
     let sortOrder: Int?
 
     var id: String { "\(modelName ?? "—")-\(sortOrder ?? 0)" }
+}
+
+/// Per-model hourly token series from `modelDataList`.
+struct ModelUsageSeries: Decodable {
+    let modelName: String?
+    let sortOrder: Int?
+    /// Elements are nullable in the wild — decoding `[Double]` would fail the
+    /// whole response on a single null.
+    let tokensUsage: [Double?]?
+    let totalTokens: Double?
 }
 
 extension Limit {

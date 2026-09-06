@@ -21,7 +21,7 @@ final class UsageModel {
     var lastUpdated: Date?
     var keyIsSet: Bool = false
     /// Per-model token usage for the last 24h (from model-usage endpoint).
-    var modelUsage: TotalUsage?
+    var modelUsage: ModelUsageData?
 
     private var autoRefreshTask: Task<Void, Never>?
     /// Keeps App Nap from suspending the 5-minute refresh timer while the
@@ -127,7 +127,7 @@ final class UsageModel {
         do {
             let mu = try await ZAIClient.shared.modelUsage(apiKey: key)
             guard !Task.isCancelled else { return }
-            self.modelUsage = mu.data?.totalUsage
+            self.modelUsage = mu.data
             log.info("model-usage ok: \(mu.data?.totalUsage?.modelSummaryList?.count ?? 0) models")
         } catch is CancellationError {
         } catch let e as URLError where e.code == .cancelled {
@@ -138,7 +138,7 @@ final class UsageModel {
 
     /// Per-model totals for the popover, in the order the API ranks them.
     var modelSummaries: [ModelSummary] {
-        (modelUsage?.modelSummaryList ?? []).sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+        (modelUsage?.totalUsage?.modelSummaryList ?? []).sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
     }
 
     func startAutoRefresh() {
