@@ -118,7 +118,7 @@ extension Limit {
     /// then weekly tokens, then web tools, then anything else.
     var displayOrder: Int {
         switch type {
-        case "TOKENS_LIMIT":
+        case "TOKENS_LIMIT", "CREDIT_LIMIT":
             switch unit { case 3: return 0; case 6: return 1; default: return 2 }
         case "TIME_LIMIT":
             return 10

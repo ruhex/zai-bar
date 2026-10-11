@@ -156,7 +156,9 @@ final class UsageModel {
     /// depletes fastest while coding, so it's the most actionable number at a
     /// glance. Falls back to the weekly token window, then to any token window.
     var headlinePercentage: Double? {
-        let tokens = limits.filter { $0.type == "TOKENS_LIMIT" }
+        // z.ai renamed the plan-limit type to CREDIT_LIMIT (was TOKENS_LIMIT);
+        // accept both so either API shape feeds the tray.
+        let tokens = limits.filter { ["TOKENS_LIMIT", "CREDIT_LIMIT"].contains($0.type) }
         if let p = tokens.first(where: { $0.unit == 3 })?.percentage { return p } // 5h
         if let p = tokens.first(where: { $0.unit == 6 })?.percentage { return p } // weekly
         return tokens.compactMap { $0.percentage }.max()
